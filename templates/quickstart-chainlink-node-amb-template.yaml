@@ -1,0 +1,663 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Chainlink node Quick Start - Amazon Managed Blockchain Ethereum full node
+Metadata:
+  cfn-lint:
+    config:
+      ignore_checks:
+        - E9101
+        - E9007
+      ignore_reasons:
+        E9101: Currently do to require parameters, on submodule. Will be updated when submodule is.
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Network configuration
+        Parameters:
+          - PrivateSubnet1ID
+          - PrivateSubnet2ID
+          - PublicSubnet1ID
+          - PublicSubnet2ID
+          - RemoteAccessCIDR
+          - VPCCIDR
+          - VPCID
+      - Label:
+          default: Amazon EC2 configuration
+        Parameters:
+          - KeyPairName
+          - ChainlinkNodeInstanceType
+          - ChainlinkNodeRootVolumeSize
+      # AMB Integration
+      - Label:
+          default: Ethereum AMB full node configuration
+        Parameters:
+          - EnableAMB
+          - AMBInstanceType
+      ######
+      - Label:
+          default: Chainlink Node configuration
+        Parameters:
+          - BlockchainNetwork
+          - ChainlinkNodeGUIEmail
+          - ChainlinkNodeGUIPassword
+          - BlockchainNodeUrl
+          - NodeWalletPassword
+          - UseSSLCertificate
+          - SSLCertificateARN
+      - Label:
+          default: Aurora PostreSQL configuration
+        Parameters:
+          - DBName
+          - DBMasterUsername
+          - DBMasterUserPassword
+          - DBPort
+          - DBHostname
+      - Label:
+          default: AWS DevOps Guru
+        Parameters:
+          - EnableAmazonDevOpsGuru
+          - AdministratorAccountId
+          - EmailAddress
+      - Label:
+          default: AWS Quick Start configuration
+        Parameters:
+          - QSS3BucketName
+          - QSS3KeyPrefix
+          - QSS3BucketRegion
+    ParameterLabels:
+      PublicSubnet1ID:
+        default: Public Subnet 1 ID
+      PublicSubnet2ID:
+        default: Public Subnet 2 ID
+      PrivateSubnet1ID:
+        default: Private Subnet 1 ID
+      PrivateSubnet2ID:
+        default: Private Subnet 2 ID
+      RemoteAccessCIDR:
+        default: Allowed bastion external access CIDR
+      VPCID:
+        default: VPC ID
+      VPCCIDR:
+        default: VPC CIDR
+      KeyPairName:
+        default: SSH Key pair name
+      ChainlinkNodeInstanceType:
+        default: Chainlink node instance type
+      ChainlinkNodeRootVolumeSize:
+        default: Chainlink Node root volume size
+      # AMB Integration
+      EnableAMB:
+        default: Enable Amazon Managed Blockchain Ethereum full node
+      AMBInstanceType:
+        default: AMB full node instance type
+      #####
+      BlockchainNetwork:
+        default: Blockchain Network
+      ChainlinkNodeGUIEmail:
+        default: Chainlink Node GUI Email
+      ChainlinkNodeGUIPassword:
+        default: Chainlink Node GUI Password
+      BlockchainNodeUrl:
+        default: Ethereum Node Websocket Url
+      NodeWalletPassword:
+        default: Chainlink Node Wallet Password
+      UseSSLCertificate:
+        default: SSL certificate with AWS Certificate Manager
+      SSLCertificateARN:
+        default: ARN of the certificate created through AWS Certificate Manager
+      DBName:
+        default: Database name
+      DBMasterUsername:
+        default: Database master username
+      DBMasterUserPassword:
+        default: Database master password
+      DBPort:
+        default: Database port
+      DBHostname:
+        Default: Database hostname
+      EnableAmazonDevOpsGuru:
+        default: Amazon DevOps Guru
+      AdministratorAccountId:
+        Default: AWS Administrator account ID
+      EmailAddress:
+        Default: Email Address to receive SNS notification
+      QSS3BucketName:
+        default: Quick Start S3 bucket name
+      QSS3KeyPrefix:
+        default: Quick Start S3 key prefix
+      QSS3BucketRegion:
+        default: Quick Start S3 bucket Region
+Parameters:
+  PrivateSubnet1ID:
+    Description: ID of the private Subnet in Availability Zone 1
+    Type: AWS::EC2::Subnet::Id
+  PrivateSubnet2ID:
+    Description: ID of the private Subnet in Availability Zone 2
+    Type: AWS::EC2::Subnet::Id
+  PublicSubnet1ID:
+    Description: ID of the public Subnet in Availability Zone 1
+    Type: AWS::EC2::Subnet::Id
+  PublicSubnet2ID:
+    Description: ID of the public Subnet in Availability Zone 2
+    Type: AWS::EC2::Subnet::Id
+  RemoteAccessCIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/x
+    Description: Allowed CIDR block for external SSH access to the bastions and Chainlink node UI
+    Type: String
+  VPCCIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Description: CIDR block for the VPC
+    Type: String
+  VPCID:
+    Description: 'ID of the VPC (e.g., vpc-0343606e)'
+    Type: 'AWS::EC2::VPC::Id'
+  KeyPairName:
+    Description: Name of an existing public/private key pair. If you do not have one in this AWS Region,
+      please create it before continuing.
+    Type: 'AWS::EC2::KeyPair::KeyName'
+  ChainlinkNodeInstanceType:
+    AllowedValues:
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - t3.micro
+      - t3.small
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+      - t3.2xlarge
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - c5.large
+      - c5.xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+    Default: t3.small
+    Description: Amazon EC2 instance type for the Chainlink Nodes instances.
+    Type: String
+  ChainlinkNodeRootVolumeSize:
+    Description: The size in GB for the root EBS volume for Chainlink Nodes.
+    Type: Number
+  ImageId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+  # AMB Integration
+  EnableAMB:
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "Enable Amazon Managed Blockchain Ethereum full node"
+    Type: String
+  AMBInstanceType:
+    AllowedValues:
+      - bc.t3.xlarge
+      - bc.m5.xlarge
+      - bc.m5.2xlarge
+      - bc.m5.4xlarge
+      - bc.c5.2xlarge
+      - bc.c5.4xlarge
+    Default: bc.c5.2xlarge
+    Description: Instance type for the AMB Ethereum full node.
+    Type: String
+  #####
+  BlockchainNetwork:
+    AllowedValues:
+      - ETH-Mainnet
+      - Kovan-ETH-Testnet
+      - Rinkeby-ETH-Testnet
+      - xDai-Mainnet
+      - Heco-Mainnet
+      - BSC-Mainnet
+      - Matic-Mainnet
+    Description: 'Blockchain Network to run Chainlink Node.'
+    Type: String
+  ChainlinkNodeGUIEmail:
+    Description: 'The Chainlink Node GUI Email.'
+    Type: String
+  ChainlinkNodeGUIPassword:
+    Description: 'The Chainlink Node GUI Password.'
+    NoEcho: 'True'
+    Type: String
+  BlockchainNodeUrl:
+    Description: 'Please provide websocket endpoint for a Blockchain node'
+    Type: String
+  NodeWalletPassword:
+    Description: 'Node Wallet password must container 3 capital letters, 3 lowercase letters, 3 numbers, and 3 special characters.'
+    NoEcho: 'True'
+    Type: String
+  UseSSLCertificate:
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: 'Using public certificate created through AWS Certificate Manager (ACM).'
+    Type: String
+  SSLCertificateARN:
+    Description: 'ARN of the SSL Certificate created through AWS Certificate Manager.'
+    Type: String
+  DBName:
+    Description: 'Name of the Amazon Aurora database.'
+    Type: String
+  DBMasterUsername:
+    Description: 'The database admin account username.'
+    Type: String
+  DBMasterUserPassword:
+    Description: 'The database admin account password. Do not end the password with a special character, this wil cause issues connecting to database.'
+    NoEcho: 'True'
+    Type: String
+  DBPort:
+    Description: 'The port the instance will listen for connections on.'
+    Type: Number
+  DBHostname:
+    Description: 'The Amazon Aurora PostgreSQL database hostname.'
+    Type: String
+  EnableAmazonDevOpsGuru:
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: 'Enable Amazon DevOps Guru'
+    Type: String
+  AdministratorAccountId:
+    Type: String
+    Description: 'AWS Account Id of the administrator account (the account in which StackSets will be created).'
+    MaxLength: 12
+    MinLength: 12
+  EmailAddress:
+    Description: 'Email address for Amazon DevOps Guru SNS subscription.'
+    Type: String
+  QSS3BucketName:
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+    ConstraintDescription: The Quick Start bucket name can include numbers, lowercase
+      letters, uppercase letters, and hyphens (-). It cannot start or end with a
+      hyphen (-).
+    Default: aws-quickstart
+    Description: Name of the S3 bucket for your copy of the Quick Start assets.
+      Keep the default name unless you are customizing the template.
+      Changing the name updates code references to point to a new Quick
+      Start location. This name can include numbers, lowercase letters,
+      uppercase letters, and hyphens, but do not start or end with a hyphen (-).
+      See https://aws-quickstart.github.io/option1.html.
+    Type: String
+  QSS3KeyPrefix:
+    AllowedPattern: ^([0-9a-zA-Z-.]+/)*$
+    ConstraintDescription: The Quick Start S3 key prefix can include numbers, lowercase letters,
+      uppercase letters, hyphens (-), and forward slashes (/).
+    Default: quickstart-chainlinklabs-chainlink-node/
+    Description: S3 key prefix that is used to simulate a directory for your copy of the
+      Quick Start assets. Keep the default prefix unless you are customizing
+      the template. Changing this prefix updates code references to point to
+      a new Quick Start location. This prefix can include numbers, lowercase
+      letters, uppercase letters, hyphens (-), and forward slashes (/). End with a forward slash.
+      See https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMetadata.html
+      and https://aws-quickstart.github.io/option1.html.
+    Type: String
+  QSS3BucketRegion:
+    Default: 'us-east-1'
+    Description: 'AWS Region where the Quick Start S3 bucket (QSS3BucketName) is
+    hosted. Keep the default Region unless you are customizing the template.
+    Changing this Region updates code references to point to a new Quick Start location.
+    When using your own bucket, specify the Region.
+    See https://aws-quickstart.github.io/option1.html.'
+    Type: String
+# AMB Integration
+Conditions:
+  UsingAMB: !Equals
+    - !Ref EnableAMB
+    - "true"
+#####
+Resources:
+  AmbAuthCDKApiUser6B4B6C48:
+    Type: "AWS::IAM::User"
+    Condition: UsingAMB
+    Properties:
+      ManagedPolicyArns:
+        - !Join
+          - ""
+          - - "arn:"
+            - !Ref "AWS::Partition"
+            - ":iam::aws:policy/AmazonManagedBlockchainFullAccess"
+      UserName: AmbAuthCDKApiUser
+    Metadata:
+      "aws:cdk:path": AmbAuthCdkStack/AmbAuthCDKApiUser/Resource
+  AmbAuthCDKApiUserDefaultPolicyA3FF0D19:
+    Type: "AWS::IAM::Policy"
+    Condition: UsingAMB
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - "ssm:DescribeParameters"
+              - "ssm:GetParameters"
+              - "ssm:GetParameter"
+              - "ssm:GetParameterHistory"
+            Effect: Allow
+            Resource: !Join
+              - ""
+              - - "arn:"
+                - !Ref "AWS::Partition"
+                - ":ssm:us-east-1:"
+                - !Ref "AWS::AccountId"
+                - ":parameter/"
+                - !Ref AmbAuthCDKApiUserCredentialsSsmF1D07125
+        Version: 2012-10-17
+      PolicyName: AmbAuthCDKApiUserDefaultPolicyA3FF0D19
+      Users:
+        - !Ref AmbAuthCDKApiUser6B4B6C48
+    Metadata:
+      "aws:cdk:path": AmbAuthCdkStack/AmbAuthCDKApiUser/DefaultPolicy/Resource
+  AmbAuthCDKApiUseraccesskey:
+    Type: "AWS::IAM::AccessKey"
+    Condition: UsingAMB
+    Properties:
+      UserName: !Ref AmbAuthCDKApiUser6B4B6C48
+    Metadata:
+      "aws:cdk:path": AmbAuthCdkStack/AmbAuthCDKApiUser-accesskey
+  AmbAuthCDKApiUserCredentialsSsmF1D07125:
+    Type: "AWS::SSM::Parameter"
+    Condition: UsingAMB
+    Properties:
+      Type: StringList
+      Value: !Join
+        - ""
+        - - !Ref AmbAuthCDKApiUseraccesskey
+          - ","
+          - !GetAtt
+            - AmbAuthCDKApiUseraccesskey
+            - SecretAccessKey
+      Name: AmbAuthCDKApiUserCredentialsSsm
+    Metadata:
+      "aws:cdk:path": AmbAuthCdkStack/AmbAuthCDKApiUserCredentialsSsm/Resource
+  EthereumNode:
+    Type: "AWS::ManagedBlockchain::Node"
+    Condition: UsingAMB
+    Properties:
+      NetworkId: n-ethereum-mainnet
+      NodeConfiguration:
+        AvailabilityZone: !Select
+          - 0
+          - !GetAZs ""
+        InstanceType: !Ref AmbInstanceType
+    Metadata:
+      "aws:cdk:path": AmbAuthCdkStack/EthereumNode
+  websocketCachePolicyE0F6B618:
+    Type: "AWS::CloudFront::CachePolicy"
+    Condition: UsingAMB
+    Properties:
+      CachePolicyConfig:
+        DefaultTTL: 86400
+        MaxTTL: 31536000
+        MinTTL: 0
+        Name: websocketCachePolicy
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: all
+    Metadata:
+      "aws:cdk:path": AmbAuthCdkStack/websocketCachePolicy/Resource
+  websocketOriginRequestPolicy2A34D3B4:
+    Type: "AWS::CloudFront::OriginRequestPolicy"
+    Condition: UsingAMB
+    Properties:
+      OriginRequestPolicyConfig:
+        CookiesConfig:
+          CookieBehavior: none
+        HeadersConfig:
+          HeaderBehavior: whitelist
+          Headers:
+            - Sec-WebSocket-Key
+            - Sec-Websocket-Extensions
+            - Sec-WebSocket-Version
+            - Sec-WebSocket-Protocol
+            - Sec-WebSocket-Accept
+        Name: websocketOriginRequestPolicy
+        QueryStringsConfig:
+          QueryStringBehavior: none
+    Metadata:
+      "aws:cdk:path": AmbAuthCdkStack/websocketOriginRequestPolicy/Resource
+  AmbSignerWebsocketFnServiceRole4FBCD43F:
+    Type: "AWS::IAM::Role"
+    Condition: UsingAMB
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: "sts:AssumeRole"
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+          - Action: "sts:AssumeRole"
+            Effect: Allow
+            Principal:
+              Service: edgelambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - !Join
+          - ""
+          - - "arn:"
+            - !Ref "AWS::Partition"
+            - ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    Metadata:
+      "aws:cdk:path": AmbAuthCdkStack/AmbSignerWebsocket/Fn/ServiceRole/Resource
+  AmbSignerWebsocketFnServiceRoleDefaultPolicy2DAB1CBE:
+    Type: "AWS::IAM::Policy"
+    Condition: UsingAMB
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: "ssm:Get*"
+            Effect: Allow
+            Resource: !Join
+              - ""
+              - - "arn:"
+                - !Ref "AWS::Partition"
+                - ":ssm:us-east-1:"
+                - !Ref "AWS::AccountId"
+                - ":parameter/"
+                - !Ref AmbAuthCDKApiUserCredentialsSsmF1D07125
+        Version: 2012-10-17
+      PolicyName: AmbSignerWebsocketFnServiceRoleDefaultPolicy2DAB1CBE
+      Roles:
+        - !Ref AmbSignerWebsocketFnServiceRole4FBCD43F
+    Metadata:
+      "aws:cdk:path": AmbAuthCdkStack/AmbSignerWebsocket/Fn/ServiceRole/DefaultPolicy/Resource
+  AmbSignerWebsocketFnF9FD2362:
+    Type: "AWS::Lambda::Function"
+    Condition: UsingAMB
+    Properties:
+      Code:
+        ZipFile: >
+          var w=(r,e)=>()=>(e||r((e={exports:{}}).exports,e),e.exports);var
+          f=w((Q,$)=>{var H=require("crypto");function
+          M(r){if(!r)return"";if(r.encoding==="base64"){return
+          Buffer.from(r.data,"base64").toString("utf-8")}return r.data}function
+          F(r){const
+          e=r.match(/(?<region>\w+-\w+-\d)\.amazonaws.com$/);if(e&&e.groups&&e.groups.region){return
+          e.groups.region}else{throw new Error("Could not parse region from
+          origin host.",r)}}function O(r){return
+          H.createHash("sha256").update(r).digest("hex")}function
+          m(r,e,n=false){if(r===void 0||e===void 0){throw new
+          Error('sha256Hmac() got undefined "key" argument')}return
+          H.createHmac("sha256",r).update(e,"utf8").digest(n?"hex":void
+          0)}function X(r,e,n,t){var o=m(`AWS4${r}`,e);var a=m(o,n);var
+          i=m(a,t);var c=m(i,"aws4_request");return c}function N(r){const
+          e=r.Records[0].cf.request;return{request:e,payload:e.body,domainName:e.origin.custom.domainName,protocol:e.origin.custom.protocol}}async
+          function P(r){let
+          e;try{e=new(require("aws-sdk/clients/ssm"))}catch(a){console.log(a);throw
+          new Error("Could not load aws-sdk/clients/ssm module.")}const n=await
+          e.getParameter({Name:r}).promise();const[t,o]=n.Parameter.Value.split(",");return{accessKeyId:t,secretKey:o}}$.exports={parseBody:M,parseRegionFromHost:F,sha256:O,getSignatureKey:X,parseCloudFrontRequest:N,getAWSCredentialsFromSSM:P}});var
+          C=w((Y,k)=>{var
+          T=require("crypto");var{parseBody:D,parseRegionFromHost:I,sha256:q,getSignatureKey:L}=f();var
+          _="managedblockchain";k.exports=function(r,e="GET",n,t){var o=new
+          URL(r);var a=o.host;var i=I(a);var c=o.pathname;var g=D(n);var
+          p=86400;var{accessKeyId:u,secretKey:l}=t;if(!u||!l){throw new
+          Error("No access key is available.")}var d=new Date;var
+          S=d.toISOString().replace(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.\d+Z/g,"$1$2$3T$4$5$6Z");var
+          v=S.substr(0,8);var b=c;var z="host:"+a+"\n";var y="host";var
+          E="AWS4-HMAC-SHA256";var A=v+"/"+i+"/"+_+"/aws4_request";var
+          s="X-Amz-Algorithm=AWS4-HMAC-SHA256";s+="&X-Amz-Credential="+encodeURIComponent(u+"/"+A);s+="&X-Amz-Date="+S;s+="&X-Amz-Expires="+p;s+="&X-Amz-SignedHeaders="+y;var
+          R=q(g);var W=e+"\n"+b+"\n"+s+"\n"+z+"\n"+y+"\n"+R;var
+          j=E+"\n"+S+"\n"+A+"\n"+q(W);var x=L(l,v,i,_);var
+          K=T.createHmac("sha256",x).update(j,"utf8").digest("hex");s+="&X-Amz-Signature="+K;return
+          s}});var B=require("querystring");var
+          U=C();var{parseCloudFrontRequest:V,getAWSCredentialsFromSSM:Z}=f();var
+          G="AmbAuthCDKApiUserCredentialsSsm";var
+          h;exports.handler=async(r,e,n)=>{let{request:t,payload:o,domainName:a,protocol:i}=V(r);a=a.toLowerCase();const
+          c=B.parse(t.querystring);let g=!!c.qs;let p=U;if(!h){h=await
+          Z(G)}const u=p(`${i}://${a}`,t.method,o,h);if(g){if("authorization"in
+          t.headers){delete t.headers["authorization"];delete
+          t.headers["x-amz-date"]}if("host"in t.headers){delete
+          t.headers["host"]}}const
+          l=["Sec-WebSocket-Key","Sec-WebSocket-Version","Sec-WebSocket-Protocol","Sec-WebSocket-Accept","Sec-WebSocket-Extensions","Connection","Upgrade"];l.forEach(d=>{if(d.toLowerCase()in
+          t.headers){t.origin.custom.customHeaders[d]=t.headers[d]}});if(g){t.origin.custom.customHeaders={...t.origin.custom.customHeaders,...u}}else{t.querystring=u};n(null,t)};
+      Role: !GetAtt
+        - AmbSignerWebsocketFnServiceRole4FBCD43F
+        - Arn
+      Handler: index.handler
+      Runtime: nodejs14.x
+    DependsOn:
+      - AmbSignerWebsocketFnServiceRoleDefaultPolicy2DAB1CBE
+      - AmbSignerWebsocketFnServiceRole4FBCD43F
+    Metadata:
+      "aws:cdk:path": AmbAuthCdkStack/AmbSignerWebsocket/Fn/Resource
+  AmbSignerWebsocketFnCurrentVersionF67A66E0276f5570bfecd5ceb226876c66817ad8:
+    Type: "AWS::Lambda::Version"
+    Condition: UsingAMB
+    Properties:
+      FunctionName: !Ref AmbSignerWebsocketFnF9FD2362
+    Metadata:
+      "aws:cdk:path": AmbAuthCdkStack/AmbSignerWebsocket/Fn/CurrentVersion/Resource
+  ManagedBlockchainProxyD1AF9071:
+    Type: "AWS::CloudFront::Distribution"
+    Condition: UsingAMB
+    Properties:
+      DistributionConfig:
+        Comment: Signs Managed Blockchain requests
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - PATCH
+            - POST
+            - DELETE
+          CachePolicyId: !Ref websocketCachePolicyE0F6B618
+          Compress: false
+          LambdaFunctionAssociations:
+            - EventType: origin-request
+              LambdaFunctionARN: !Ref >-
+                AmbSignerWebsocketFnCurrentVersionF67A66E0276f5570bfecd5ceb226876c66817ad8
+          OriginRequestPolicyId: !Ref websocketOriginRequestPolicy2A34D3B4
+          TargetOriginId: AmbAuthCdkStackManagedBlockchainProxyOrigin19B7AC554
+          ViewerProtocolPolicy: https-only
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Origins:
+          - CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1
+                - TLSv1.1
+                - TLSv1.2
+            DomainName: !Join
+              - ""
+              - - !GetAtt
+                  - EthereumNode
+                  - NodeId
+                - .wss.ethereum.managedblockchain.us-east-1.amazonaws.com
+            Id: AmbAuthCdkStackManagedBlockchainProxyOrigin19B7AC554
+        PriceClass: PriceClass_100
+    Metadata:
+      "aws:cdk:path": AmbAuthCdkStack/ManagedBlockchainProxy/Resource
+  CDKMetadata:
+    Type: "AWS::CDK::Metadata"
+    Condition: UsingAMB
+    Properties:
+      Analytics: >-
+        v2:deflate64:H4sIAAAAAAAA/21Py1LDMAz8lt5dlzDlwA0mlAsM7YSBuyOrqRs/imwDHY//HSftpD1w2l1ppZUqXt3e85vZg/jxc5D9IoEj5Ok9COhZ7awPFCGwemvXMRziyBr0LhJgZsNUUsLw9OGRht6IG6cVHAd5YY8A6P0LHlnjNI5rCmbmvRniSNnuVfmwESQMhtOySWRmhBUdylY76GEnlOWl/+YkMtAuyi05G3iqBezwknkt16Q6VU7/ilhSJst/Zfw9ICmDNgjNV7LD52ghKGfZU7mQVBtHUaavdWZamFYKniZ7cUz8E8mfa2eac2a2fMD3fvFdLXl1x5ezvVdqTtGGks+bE/4BVZPziKUBAAA=
+    Metadata:
+      "aws:cdk:path": AmbAuthCdkStack/CDKMetadata/Default
+  ChainlinkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL:
+        !Sub
+          - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/quickstart-chainlink-node.template.yaml'
+          - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+            S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+      Parameters:
+        RemoteAccessCIDR: !Ref RemoteAccessCIDR
+        PublicSubnet1ID: !Ref PublicSubnet1ID
+        PublicSubnet2ID: !Ref PublicSubnet2ID
+        PrivateSubnet1ID: !Ref PrivateSubnet1ID
+        PrivateSubnet2ID: !Ref PrivateSubnet2ID
+        VPCID: !Ref VPCID
+        VPCCIDR: !Ref VPCCIDR
+        KeyPairName: !Ref KeyPairName
+        # AMB Integration
+        AMBWebsocketEndpoint:
+          Fn::GetAtt: 
+          - AMBStack
+          - Outputs.WebsocketEndpoint
+        #####
+        ChainlinkNodeInstanceType: !Ref ChainlinkNodeInstanceType
+        ChainlinkNodeRootVolumeSize: !Ref ChainlinkNodeRootVolumeSize
+        BlockchainNetwork: !Ref BlockchainNetwork
+        ChainlinkNodeGUIEmail: !Ref ChainlinkNodeGUIEmail
+        ChainlinkNodeGUIPassword: !Ref ChainlinkNodeGUIPassword
+        BlockchainNodeUrl: !Ref BlockchainNodeUrl
+        NodeWalletPassword: !Ref NodeWalletPassword
+        DBName: !Ref DBName
+        DBAutoMinorVersionUpgrade: !Ref DBAutoMinorVersionUpgrade
+        DBBackupRetentionPeriod: !Ref DBBackupRetentionPeriod
+        DBEngineVersion: !Ref DBEngineVersion
+        DBInstanceClass: !Ref DBInstanceClass
+        DBMasterUsername: !Ref DBMasterUsername
+        DBMasterUserPassword: !Ref DBMasterUserPassword
+        DBPort: !Ref DBPort
+        DBMultiAZ: !Ref DBMultiAZ
+        BastionAMIOS: !Ref BastionAMIOS
+        BastionInstanceType: !Ref BastionInstanceType
+        NumBastionHosts: !Ref NumBastionHosts
+        BastionHostName: !Ref BastionHostName
+        BastionTenancy: !Ref BastionTenancy
+        EnableBanner: !Ref EnableBanner
+        BastionBanner: !Ref BastionBanner
+        EnableTCPForwarding: !Ref EnableTCPForwarding
+        EnableX11Forwarding: !Ref EnableX11Forwarding
+        UseSSLCertificate: !Ref UseSSLCertificate
+        SSLCertificateARN: !Ref SSLCertificateARN
+        EnableAmazonDevOpsGuru: !Ref EnableAmazonDevOpsGuru
+        AdministratorAccountId: !Ref AdministratorAccountId
+        EmailAddress: !Ref EmailAddress
+        QSS3BucketRegion: !Ref QSS3BucketRegion
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+Outputs:
+  WebsocketEndpoint:
+    Value: !Join
+      - ""
+      - - "wss://"
+        - !GetAtt
+          - ManagedBlockchainProxyD1AF9071
+          - DomainName
+  ManagedBlockchainNodeId:
+    Value: !GetAtt
+      - EthereumNode
+      - NodeId

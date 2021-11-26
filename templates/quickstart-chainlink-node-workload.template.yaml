@@ -41,6 +41,13 @@ Metadata:
           - BastionBanner
           - EnableTCPForwarding
           - EnableX11Forwarding
+      # AMB Integration
+      - Label:
+          default: Ethereum AMB full node configuration
+        Parameters:
+          - EnableAMB
+          - AMBInstanceType
+      ######
       - Label:
           default: Chainlink node configuration
         Parameters:
@@ -112,6 +119,12 @@ Metadata:
         default: TCP forwarding
       EnableX11Forwarding:
         default: X11 forwarding
+      # AMB Integration
+      EnableAMB:
+        default: Enable Amazon Managed Blockchain Ethereum full node
+      AMBInstanceType:
+        default: AMB full node instance type
+      #####
       BlockchainNetwork:
         default: Blockchain network
       ChainlinkNodeGUIEmail:
@@ -296,6 +309,25 @@ Parameters:
     AllowedValues:
       - 'true'
       - 'false'
+  # AMB Integration
+  EnableAMB:
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "Enable Amazon Managed Blockchain Ethereum full node"
+    Type: String
+  AMBInstanceType:
+    AllowedValues:
+      - bc.t3.xlarge
+      - bc.m5.xlarge
+      - bc.m5.2xlarge
+      - bc.m5.4xlarge
+      - bc.c5.2xlarge
+      - bc.c5.4xlarge
+    Default: bc.c5.2xlarge
+    Description: Instance type for the AMB Ethereum full node.
+    Type: String
+  #####
   BlockchainNetwork:
     AllowedValues:
       - ETH-Mainnet
@@ -533,6 +565,10 @@ Resources:
         KeyPairName: !Ref KeyPairName
         ChainlinkNodeInstanceType: !Ref ChainlinkNodeInstanceType
         ChainlinkNodeRootVolumeSize: !Ref ChainlinkNodeRootVolumeSize
+        # AMB Integration
+        EnableAMB: !Ref EnableAMB
+        AMBInstanceType: !Ref AMBInstanceType
+        #####
         BlockchainNetwork: !Ref BlockchainNetwork
         ChainlinkNodeGUIEmail: !Ref ChainlinkNodeGUIEmail
         ChainlinkNodeGUIPassword: !Ref ChainlinkNodeGUIPassword

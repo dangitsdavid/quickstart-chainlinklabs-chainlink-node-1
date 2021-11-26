@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Chainlink Node Quick Start - Infrastructure (qs-1s6adgs8e)
+Description: Chainlink node Quick Start - Infrastructure (qs-1s6adgs8e)
 Metadata:
   cfn-lint:
     config:
@@ -26,6 +26,14 @@ Metadata:
           - KeyPairName
           - ChainlinkNodeInstanceType
           - ChainlinkNodeRootVolumeSize
+      # AMB Integration
+      - Label:
+          default: Ethereum AMB full node configuration
+        Parameters:
+          - EnableAMB
+          - AMBInstanceType
+      ######
+      - Label:
       - Label:
           default: Chainlink Node configuration
         Parameters:
@@ -77,6 +85,12 @@ Metadata:
         default: Chainlink node instance type
       ChainlinkNodeRootVolumeSize:
         default: Chainlink Node root volume size
+      # AMB Integration
+      EnableAMB:
+        default: Enable Amazon Managed Blockchain Ethereum full node
+      AMBInstanceType:
+        default: AMB full node instance type
+      #####
       BlockchainNetwork:
         default: Blockchain Network
       ChainlinkNodeGUIEmail:
@@ -180,6 +194,27 @@ Parameters:
   ImageId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+  # AMB Integration
+  EnableAMB:
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: "Enable Amazon Managed Blockchain Ethereum full node"
+    Type: String
+  AMBInstanceType:
+    AllowedValues:
+      - bc.t3.xlarge
+      - bc.m5.xlarge
+      - bc.m5.2xlarge
+      - bc.m5.4xlarge
+      - bc.c5.2xlarge
+      - bc.c5.4xlarge
+    Default: bc.c5.2xlarge
+    Description: Instance type for the AMB Ethereum full node.
+    Type: String
+  AMBWebsocketEndpoint:
+    Type: String
+  #####
   BlockchainNetwork:
     AllowedValues:
       - ETH-Mainnet
@@ -288,6 +323,12 @@ Conditions:
   UsingAmazonDevOpsGuru: !Equals
     - !Ref EnableAmazonDevOpsGuru
     - 'true'
+# AMB Integration
+Conditions:
+  UsingAMB: !Equals
+    - !Ref EnableAMB
+    - "true"
+#####
 Resources:
   ChainlinkNodeAutoScalingGroup:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
@@ -331,9 +372,12 @@ Resources:
             01-store-chainnetwork-var:
               command: !Sub
                 echo 'chainNetwork=${BlockchainNetwork}' >> /etc/environment
+            # AMB Integration
             02-store-blockchainrpc-var:
               command: !Sub
-                echo 'blockchainNodeUrl=${BlockchainNodeUrl}' >> /etc/environment
+              - echo 'blockchainNodeUrl=${BlockchainNodeUrl}' >> /etc/environment
+              - BlockchainNodeUrl: !If [EnableAMB, !Ref AMBWebsocketEndpoint , !Ref BlockchainNodeUrl]
+            #####
             03-store-dbuser-var:
               command: !Sub
                 echo 'psqlUser=${DBMasterUsername}' >> /etc/environment
@@ -415,7 +459,9 @@ Resources:
                 ${DBPort} \
                 ${DBName}
               - BlockchainNetwork: !Ref BlockchainNetwork
-                BlockchainNodeUrl: !Ref BlockchainNodeUrl
+                # AMB Integration
+                BlockchainNodeUrl: !If [EnableAMB, !Ref AMBWebsocketEndpoint , !Ref BlockchainNodeUrl]
+                #####
                 DBMasterUsername: !Ref DBMasterUsername
                 DBMasterUserPassword: !Ref DBMasterUserPassword
                 DBHostname: !Ref DBHostname
