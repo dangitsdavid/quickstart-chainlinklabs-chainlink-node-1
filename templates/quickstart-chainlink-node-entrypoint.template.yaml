@@ -44,7 +44,7 @@ Metadata:
           - EnableX11Forwarding
       # AMB Integration
       - Label:
-          default: Ethereum AMB full node configuration
+          default: Amazon Managed Blockchain Ethereum full node configuration (for ETH-Mainnet only)
         Parameters:
           - EnableAMB
           - AMBInstanceType
@@ -124,7 +124,7 @@ Metadata:
         default: X11 forwarding
       # AMB Integration
       EnableAMB:
-        default: Enable Amazon Managed Blockchain Ethereum full node
+        default: AMB Ethereum full node
       AMBInstanceType:
         default: AMB full node instance type
       #####
@@ -338,7 +338,7 @@ Parameters:
     AllowedValues:
       - "true"
       - "false"
-    Description: "Enable Amazon Managed Blockchain Ethereum full node"
+    Description: "Enable AMB Ethereum full node"
     Type: String
   AMBInstanceType:
     AllowedValues:
@@ -378,7 +378,7 @@ Parameters:
     Type: String
   BlockchainNodeUrl:
     Default: 'wss://blockchainNodeEndpoint'
-    Description: 'The web socket endpoint for a blockchain node.'
+    Description: 'The web socket endpoint for a blockchain node. Leave default placeholder if enabling AMB Ethereum full node.'
     MaxLength: '240'
     MinLength: '6'
     Type: String
@@ -545,12 +545,13 @@ Resources:
         PublicSubnet2CIDR: !Ref PublicSubnet2CIDR
         VPCCIDR: !Ref VPCCIDR
         VPCTenancy: !Ref VPCTenancy
-  AMBStack:
+  ChainlinkNodeStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL:
         !Sub
-          - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/quickstart-chainlink-node-amb-template.yaml'
+          - 'https://quickstart-chainlink-node-test-bucket.s3.us-east-1.amazonaws.com/quickstart-chainlink-node/templates/quickstart-chainlink-node-workload.template.yaml'
+          # - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/quickstart-chainlink-node-workload.template.yml'
           - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
             S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
