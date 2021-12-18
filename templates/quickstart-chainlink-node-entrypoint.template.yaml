@@ -428,7 +428,8 @@ Parameters:
   DBEngineVersion:
     Description: The database engine version.
     Type: String
-    Default: 11.9
+    # Default: 11.9
+    Default: 11.7 # Downgrade default until fix from outdate submodules 
     AllowedValues:
       - 9.6.16
       - 9.6.17

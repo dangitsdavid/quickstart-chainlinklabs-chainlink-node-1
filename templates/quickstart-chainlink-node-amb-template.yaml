@@ -310,8 +310,17 @@ Parameters:
     When using your own bucket, specify the Region.
     See https://aws-quickstart.github.io/option1.html.'
     Type: String
-# AMB Integration
 Conditions:
+  UsingDefaultBucket: !Equals
+    - !Ref QSS3BucketName
+    - 'aws-quickstart'
+  UsingSSLCertificate: !Equals
+    - !Ref UseSSLCertificate
+    - 'true'
+  UsingAmazonDevOpsGuru: !Equals
+    - !Ref EnableAmazonDevOpsGuru
+    - 'true'
+# AMB Integration
   UsingAMB: !Equals
     - !Ref EnableAMB
     - "true"
@@ -613,10 +622,17 @@ Resources:
         VPCCIDR: !Ref VPCCIDR
         KeyPairName: !Ref KeyPairName
         # AMB Integration
-        AMBWebsocketEndpoint:
-          Fn::GetAtt: 
-          - AMBStack
-          - Outputs.WebsocketEndpoint
+        EnableAMB: !Ref EnableAMB
+        # AMBWebsocketEndpoint:
+        #   Fn::GetAtt:
+        #   - AMBStack
+        #   - Outputs.WebsocketEndpoint
+        AMBWebsocketEndpoint: !Join
+          - ""
+          - - "wss://"
+            - !GetAtt
+              - ManagedBlockchainProxyD1AF9071
+              - DomainName
         #####
         ChainlinkNodeInstanceType: !Ref ChainlinkNodeInstanceType
         ChainlinkNodeRootVolumeSize: !Ref ChainlinkNodeRootVolumeSize
@@ -625,22 +641,12 @@ Resources:
         ChainlinkNodeGUIPassword: !Ref ChainlinkNodeGUIPassword
         BlockchainNodeUrl: !Ref BlockchainNodeUrl
         NodeWalletPassword: !Ref NodeWalletPassword
+        UseSSLCertificate: !Ref UseSSLCertificate
+        SSLCertificateARN: !Ref SSLCertificateARN
         DBName: !Ref DBName
         DBMasterUsername: !Ref DBMasterUsername
         DBMasterUserPassword: !Ref DBMasterUserPassword
         DBPort: !Ref DBPort
-        DBMultiAZ: !Ref DBMultiAZ
-        BastionAMIOS: !Ref BastionAMIOS
-        BastionInstanceType: !Ref BastionInstanceType
-        NumBastionHosts: !Ref NumBastionHosts
-        BastionHostName: !Ref BastionHostName
-        BastionTenancy: !Ref BastionTenancy
-        EnableBanner: !Ref EnableBanner
-        BastionBanner: !Ref BastionBanner
-        EnableTCPForwarding: !Ref EnableTCPForwarding
-        EnableX11Forwarding: !Ref EnableX11Forwarding
-        UseSSLCertificate: !Ref UseSSLCertificate
-        SSLCertificateARN: !Ref SSLCertificateARN
         EnableAmazonDevOpsGuru: !Ref EnableAmazonDevOpsGuru
         AdministratorAccountId: !Ref AdministratorAccountId
         EmailAddress: !Ref EmailAddress
