@@ -396,8 +396,7 @@ Resources:
         AvailabilityZone: !Select
           - 0
           - !GetAZs ""
-        InstanceType: 
-          - !Ref AMBInstanceType
+        InstanceType: !Ref AMBInstanceType
     Metadata:
       "aws:cdk:path": AmbAuthCdkStack/EthereumNode
   websocketCachePolicyE0F6B618:
